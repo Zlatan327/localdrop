@@ -104,7 +104,7 @@
         serverIp = data.ip;
         serverPort = data.port;
         
-        const uploadUrl = \`http://\${serverIp}:\${serverPort}/upload\`;
+        const uploadUrl = `http://${serverIp}:${serverPort}/upload`;
         document.getElementById('url-box').innerText = uploadUrl;
         
         new QRCode(document.getElementById("qrcode"), {
@@ -133,11 +133,11 @@
         const list = document.getElementById('file-list');
         
         if (!data.files || data.files.length === 0) {
-          list.innerHTML = \`
+          list.innerHTML = `
             <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted); border: 2px dashed var(--border); border-radius: 1rem;">
               <p>No files available. Share a file from PC or upload from a device.</p>
             </div>
-          \`;
+          `;
           return;
         }
 
@@ -169,22 +169,22 @@
             iconBg = 'rgba(239, 68, 68, 0.1)';
           }
 
-          const shareUrl = \`http://\${serverIp}:\${serverPort}/download/\${encodeURIComponent(f.name)}\`;
+          const shareUrl = `http://${serverIp}:${serverPort}/download/${encodeURIComponent(f.name)}`;
 
-          return \`
+          return `
           <div class="file-item">
-            <div class="file-icon" style="color: \${iconColor}; background: \${iconBg};">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\${iconSvg}</svg>
+            <div class="file-icon" style="color: ${iconColor}; background: ${iconBg};">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>
             </div>
             <div class="file-info">
-              <div class="file-name" title="\${f.name}">\${f.name}</div>
+              <div class="file-name" title="${f.name}">${f.name}</div>
               <div class="file-meta">
-                \${(f.size / 1024 / 1024).toFixed(2)} MB &bull; \${new Date(f.createdAt).toLocaleString()}
+                ${(f.size / 1024 / 1024).toFixed(2)} MB &bull; ${new Date(f.createdAt).toLocaleString()}
               </div>
             </div>
-            <button class="action-btn" onclick="openShareModal('\${shareUrl}')">Share</button>
+            <button class="action-btn" onclick="openShareModal('${shareUrl}')">Share</button>
           </div>
-        \`}).join('');
+        `}).join('');
 
       } catch (e) {
         console.error('Fetch files failed', e);
