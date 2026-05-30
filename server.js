@@ -58,9 +58,18 @@ const server = http.createServer((req, res) => {
     });
 
     req.on('error', (err) => {
-      console.error(err);
+      console.error('Upload Error:', err);
+      writeStream.destroy();
       res.writeHead(500);
       res.end(JSON.stringify({ error: 'Failed to upload' }));
+    });
+
+    req.on('aborted', () => {
+      console.warn(`Upload aborted by client. Cleaning up partial file: ${finalName}`);
+      writeStream.destroy();
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Error cleaning up aborted file:', err);
+      });
     });
     return;
   }
@@ -89,6 +98,37 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (req.url.startsWith('/download/') && req.method === 'GET') {
+    const filename = decodeURIComponent(req.url.substring('/download/'.length));
+    // Basic protection against directory traversal
+    const safeFilename = path.basename(filename);
+    const filePath = path.join(UPLOAD_DIR, safeFilename);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        res.writeHead(404);
+        return res.end('File not found');
+      }
+
+      const stat = fs.statSync(filePath);
+      
+      // Remove timestamp for the download name if we want, or keep it. We'll keep it for simplicity.
+      // E.g., 1717140889123-MyVideo.mp4 -> MyVideo.mp4
+      const originalNameMatch = safeFilename.match(/^\d+-(.+)$/);
+      const downloadName = originalNameMatch ? originalNameMatch[1] : safeFilename;
+
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': stat.size,
+        'Content-Disposition': `attachment; filename="${downloadName.replace(/"/g, '\\"')}"`
+      });
+
+      const readStream = fs.createReadStream(filePath);
+      readStream.pipe(res);
+    });
+    return;
+  }
+
   if (req.url === '/api/ip' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ip: getLocalIp(), port: PORT }));
@@ -96,10 +136,21 @@ const server = http.createServer((req, res) => {
   }
 
   // --- Static Files Serving ---
-  let filePath = path.join(PUBLIC_DIR, req.url === '/' ? 'index.html' : req.url);
+  // The user might send something like /../../../windows/system32/cmd.exe
+  // path.normalize resolves these.
+  const normalizedUrl = path.normalize(req.url === '/' ? '/index.html' : req.url);
+  let filePath = path.join(PUBLIC_DIR, normalizedUrl);
   
   if (req.url === '/upload') {
     filePath = path.join(PUBLIC_DIR, 'upload.html');
+  }
+
+  // Security check: Directory Traversal Prevention
+  // Ensure that the final resolved absolute path actually resides within our public folder.
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    console.warn(`Directory Traversal Attempt Blocked: ${req.url}`);
+    res.writeHead(403);
+    return res.end('403 Forbidden: Invalid Path');
   }
 
   const extname = String(path.extname(filePath)).toLowerCase();
