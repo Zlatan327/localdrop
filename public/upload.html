@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LocalDrop - Send File</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="upload-container">
+    <div class="upload-card">
+      <h1 class="logo" style="font-size: 2rem; margin-bottom: 0.5rem;">LocalDrop</h1>
+      <p class="subtitle" style="margin-bottom: 2.5rem;">Send files directly to your PC</p>
+
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" style="display: none" onchange="handleFileSelect(event)">
+        
+        <div id="upload-prompt">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Tap to Select File</h3>
+          <p style="color: var(--text-muted); font-size: 0.875rem;">Videos, documents, or images</p>
+        </div>
+
+        <div id="file-info" style="display: none; width: 100%;">
+          <div class="upload-icon" style="background: rgba(59, 130, 246, 0.2); color: var(--primary); margin: 0 auto 1.5rem auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <h3 id="selected-file-name" style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 1rem;">filename.ext</h3>
+          <p id="selected-file-size" style="color: var(--text-muted); font-size: 0.875rem;">0 MB</p>
+        </div>
+
+        <div id="progress" class="progress-bar" style="width: 0%;"></div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;" id="action-buttons">
+        <button id="cancel-btn" class="btn" style="background: var(--panel); border: 1px solid var(--border); display: none;" onclick="cancelSelection()">Cancel</button>
+        <button id="upload-btn" class="btn" disabled onclick="uploadFile()">Select a file first</button>
+      </div>
+
+      <div id="status-message" class="status-box" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentFile = null;
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      currentFile = file;
+      document.getElementById('upload-prompt').style.display = 'none';
+      document.getElementById('file-info').style.display = 'block';
+      
+      document.getElementById('selected-file-name').innerText = file.name;
+      document.getElementById('selected-file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+      
+      const uploadBtn = document.getElementById('upload-btn');
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = 'Send to PC';
+      
+      document.getElementById('cancel-btn').style.display = 'block';
+      document.getElementById('status-message').style.display = 'none';
+      document.getElementById('progress').style.width = '0%';
+    }
+
+    function cancelSelection() {
+      currentFile = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('upload-prompt').style.display = 'block';
+      document.getElementById('file-info').style.display = 'none';
+      
+      const uploadBtn = document.getElementById('upload-btn');
+      uploadBtn.disabled = true;
+      uploadBtn.innerText = 'Select a file first';
+      
+      document.getElementById('cancel-btn').style.display = 'none';
+      document.getElementById('status-message').style.display = 'none';
+    }
+
+    function showStatus(message, isError) {
+      const statusEl = document.getElementById('status-message');
+      statusEl.innerText = message;
+      statusEl.className = 'status-box ' + (isError ? 'status-error' : 'status-success');
+      statusEl.style.display = 'block';
+    }
+
+    function uploadFile() {
+      if (!currentFile) return;
+
+      const btn = document.getElementById('upload-btn');
+      const cancelBtn = document.getElementById('cancel-btn');
+      btn.disabled = true;
+      btn.innerText = 'Sending...';
+      cancelBtn.disabled = true;
+
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.onprogress = function(event) {
+        if (event.lengthComputable) {
+          const percentComplete = (event.loaded / event.total) * 100;
+          document.getElementById('progress').style.width = percentComplete + '%';
+        }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          showStatus('File sent successfully!', false);
+          setTimeout(cancelSelection, 2000);
+        } else {
+          showStatus('Upload failed. Server responded with ' + xhr.status, true);
+          btn.disabled = false;
+          btn.innerText = 'Try Again';
+        }
+        cancelBtn.disabled = false;
+      };
+
+      xhr.onerror = function() {
+        showStatus('Network error occurred.', true);
+        btn.disabled = false;
+        btn.innerText = 'Try Again';
+        cancelBtn.disabled = false;
+      };
+
+      xhr.open('POST', '/api/upload', true);
+      // We pass the file directly as the body, and the filename in headers.
+      // This allows the Node server to just pipe the raw stream. Extremely efficient!
+      xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+      xhr.setRequestHeader('X-File-Name', encodeURIComponent(currentFile.name));
+      xhr.send(currentFile);
+    }
+
+    // Drag and drop support
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        document.getElementById('fileInput').files = e.dataTransfer.files;
+        handleFileSelect({ target: { files: e.dataTransfer.files } });
+      }
+    });
+  </script>
+</body>
+</html>
