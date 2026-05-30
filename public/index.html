@@ -73,8 +73,11 @@
   <!-- Modal for Targeted Sharing -->
   <div class="modal-overlay" id="share-modal" onclick="closeShareModal(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
-      <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Secure Download Link</h3>
-      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">Scan with phone or copy link to download.</p>
+      <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Secure Transfer</h3>
+      <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem;">
+        <strong>To Phone:</strong> Scan the QR code below.<br>
+        <strong>PC to PC:</strong> Copy the secure link.
+      </p>
       
       <div class="qr-container" style="background: white; margin: 0 auto 1.5rem auto; width: 200px; height: 200px;">
         <div id="share-qrcode" style="width: 100%; height: 100%;"></div>
@@ -84,7 +87,7 @@
 
       <div style="display: flex; gap: 1rem;">
         <button class="btn-outline" style="flex: 1;" onclick="closeShareModal()">Close</button>
-        <button class="btn" style="flex: 1; margin-top: 0; padding: 0.75rem;" onclick="copyShareLink()">Copy Link</button>
+        <button class="btn" style="flex: 2; margin-top: 0; padding: 0.75rem;" onclick="copyShareLink()">Copy PC-to-PC Link</button>
       </div>
     </div>
   </div>
@@ -110,18 +113,11 @@
           height: 200,
           colorDark: "#000000",
           colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
+          correctLevel: QRCode.CorrectLevel.L
         });
 
-        // Initialize empty QR for modal
-        shareQrCodeInstance = new QRCode(document.getElementById("share-qrcode"), {
-          text: "loading",
-          width: 180,
-          height: 180,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
+        // Removed initial share QR generation to prevent blanking bugs.
+        // It will be generated fresh every time the modal is opened.
 
         fetchFiles();
         setInterval(fetchFiles, 3000);
@@ -198,8 +194,19 @@
     // Share Modal Logic
     function openShareModal(url) {
       document.getElementById('share-url-box').innerText = url;
-      shareQrCodeInstance.clear();
-      shareQrCodeInstance.makeCode(url);
+      
+      const qrContainer = document.getElementById('share-qrcode');
+      qrContainer.innerHTML = ''; // Clear previous QR Code completely to fix blanking bug
+      
+      new QRCode(qrContainer, {
+        text: url,
+        width: 180,
+        height: 180,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.L // Lower error correction allows for much longer URLs (e.g. huge filenames)
+      });
+      
       document.getElementById('share-modal').classList.add('active');
     }
 
