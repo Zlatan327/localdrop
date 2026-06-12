@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = 3000;
+const PORT_START = 3000;
+let PORT = PORT_START;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -182,10 +183,28 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n==============================================`);
-  console.log(`LocalDrop Server running!`);
-  console.log(`Access dashboard on PC: http://localhost:${PORT}`);
-  console.log(`Access on mobile device: http://${getLocalIp()}:${PORT}/upload`);
-  console.log(`==============================================\n`);
-});
+function startServer(port) {
+  server.listen(port, '0.0.0.0')
+    .on('listening', () => {
+      PORT = port;
+      console.log(`\n==============================================`);
+      console.log(`LocalDrop Server running!`);
+      console.log(`Access dashboard on PC: http://127.0.0.1:${PORT}`);
+      console.log(`Access on mobile device: http://${getLocalIp()}:${PORT}/upload`);
+      console.log(`==============================================\n`);
+      
+      const { exec } = require('child_process');
+      const startCommand = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+      exec(`${startCommand} http://127.0.0.1:${PORT}`);
+    })
+    .on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`Port ${port} is in use, trying ${port + 1}...`);
+        startServer(port + 1);
+      } else {
+        console.error('Server failed to start:', err);
+      }
+    });
+}
+
+startServer(PORT);
