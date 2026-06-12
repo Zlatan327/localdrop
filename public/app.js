@@ -151,7 +151,7 @@ function handlePcFileSelect(event) {
     if (xhr.status === 200) {
       fetchFiles();
     } else {
-      throw new Error('Upload failed with status: ' + xhr.status);
+      alert('Upload failed: ' + xhr.status);
     }
   };
 

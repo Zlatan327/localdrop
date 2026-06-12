@@ -183,28 +183,26 @@ const server = http.createServer((req, res) => {
   });
 });
 
-function startServer(port) {
-  server.listen(port, '0.0.0.0')
-    .on('listening', () => {
-      PORT = port;
-      console.log(`\n==============================================`);
-      console.log(`LocalDrop Server running!`);
-      console.log(`Access dashboard on PC: http://127.0.0.1:${PORT}`);
-      console.log(`Access on mobile device: http://${getLocalIp()}:${PORT}/upload`);
-      console.log(`==============================================\n`);
-      
-      const { exec } = require('child_process');
-      const startCommand = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-      exec(`${startCommand} http://127.0.0.1:${PORT}`);
-    })
-    .on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${port} is in use, trying ${port + 1}...`);
-        startServer(port + 1);
-      } else {
-        console.error('Server failed to start:', err);
-      }
-    });
-}
+server.on('listening', () => {
+  console.log(`\n==============================================`);
+  console.log(`LocalDrop Server running!`);
+  console.log(`Access dashboard on PC: http://127.0.0.1:${PORT}`);
+  console.log(`Access on mobile device: http://${getLocalIp()}:${PORT}/upload`);
+  console.log(`==============================================\n`);
+  
+  const { exec } = require('child_process');
+  const startCommand = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  exec(`${startCommand} http://127.0.0.1:${PORT}`);
+});
 
-startServer(PORT);
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} is in use, trying ${PORT + 1}...`);
+    PORT++;
+    server.listen(PORT, '0.0.0.0');
+  } else {
+    console.error('Server failed to start:', err);
+  }
+});
+
+server.listen(PORT, '0.0.0.0');
